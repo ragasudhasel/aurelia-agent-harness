@@ -1,0 +1,94 @@
+task_name: "IncidentPilot"
+task_type: "incident_investigation"
+description: "Application incident triage, error grouping, chronological timeline reconstruction, and mitigation."
+workspace_root: "./benchmarks/fixtures/incident_logs"
+
+lead_agent_instructions: >
+  You are the Incident Commander. Coordinate application log analysis, error clustering,
+  timeline reconstruction, root cause isolation, and propose mitigation controls.
+
+global_budget:
+  max_steps: 30
+  max_wall_time_sec: 90.0
+  max_tokens: 40000
+  max_model_calls: 15
+  max_rejection_cycles: 2
+
+retry_config:
+  max_attempts: 3
+  initial_backoff_sec: 0.1
+  backoff_multiplier: 2.0
+  jitter: true
+  retryable_error_types:
+    - "RateLimitError"
+    - "TemporaryNetworkError"
+    - "TimeoutError"
+
+checker_config:
+  max_rejection_cycles: 2
+  deterministic_enabled: true
+  semantic_enabled: true
+  fail_closed: true
+
+chaos_config:
+  enabled: false
+  target_agent: null
+  failure_type: null
+
+model_provider: "mock"
+model_name: "mock-incidentpilot-v1"
+trace_dir: "./runs"
+require_human_approval_for_risky_tools: true
+
+agents:
+  log_agent:
+    name: "log_agent"
+    role: "Log Analysis Specialist"
+    description: "Parses raw log files, normalizes timestamps, and groups critical error cascades."
+    instructions: >
+      Extract error signatures, compute occurrence frequency, and identify anomalous spikes.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+      - "parse_log_file"
+      - "group_errors"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2
+
+  incident_agent:
+    name: "incident_agent"
+    role: "Root Cause Specialist"
+    description: "Reconstructs chronological failure sequence and isolates underlying trigger."
+    instructions: >
+      Reconstruct the sequence of events leading to outage. Distinguish symptoms from root cause.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+      - "parse_log_file"
+      - "reconstruct_timeline"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2
+
+  mitigation_agent:
+    name: "mitigation_agent"
+    role: "Site Reliability Specialist"
+    description: "Proposes immediate workarounds, circuit breakers, and long-term architectural hardening."
+    instructions: >
+      Provide concrete, actionable remediation steps, pool sizing guidelines, and preventive alerting rules.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2

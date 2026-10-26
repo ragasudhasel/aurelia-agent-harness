@@ -1,0 +1,7 @@
+2026-10-26 14:00:01.102 [INFO] web_server: Inbound request GET /api/v1/orders/10293
+2026-10-26 14:01:15.421 [WARN] db_pool: Connection checkout duration exceeded 1200ms
+2026-10-26 14:02:11.889 [ERROR] db_pool: Maximum connection pool size 100 reached
+2026-10-26 14:02:12.012 [ERROR] order_service: Timeout waiting for database connection from pool
+2026-10-26 14:02:15.334 [CRITICAL] api_gateway: Upstream service order_service timed out with HTTP 504 Gateway Timeout
+2026-10-26 14:03:00.005 [ERROR] db_pool: Connection lease leak detected on worker-4
+2026-10-26 14:03:45.912 [CRITICAL] circuit_breaker: Open state triggered for order_service due to 45% failure rate

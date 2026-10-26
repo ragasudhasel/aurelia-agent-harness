@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aurelia Task D — Multi-Agent Execution Trace Viewer</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --danger: #f85149;
+      --warning: #d29922;
+      --purple: #bc8cff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    h1 { font-size: 1.5rem; color: #fff; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-success { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid var(--success); }
+    .badge-danger { background: rgba(248,81,73,0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-warning { background: rgba(210,153,34,0.15); color: var(--warning); border: 1px solid var(--warning); }
+    .badge-info { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid var(--accent); }
+
+    .dropzone {
+      background: var(--card-bg);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+    .dropzone:hover { border-color: var(--accent); }
+    .dropzone input { display: none; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+    }
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(48,54,61,0.5);
+      font-size: 0.85rem;
+    }
+    .metric-val { font-weight: 600; color: #fff; }
+
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    select, input[type="text"] {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .event-card {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      position: relative;
+    }
+    .event-card.event-tool_call { border-left: 4px solid var(--purple); }
+    .event-card.event-checker_approved { border-left: 4px solid var(--success); }
+    .event-card.event-checker_rejected { border-left: 4px solid var(--danger); }
+    .event-card.event-task_started { border-left: 4px solid var(--accent); }
+    .event-card.event-task_timed_out { border-left: 4px solid var(--warning); }
+    .event-card.event-budget_exhausted { border-left: 4px solid var(--warning); }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .event-type { font-weight: 600; color: #fff; font-size: 0.85rem; }
+    .event-details {
+      background: #161b22;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      color: #e6edf3;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>Aurelia Multi-Agent Trace Viewer</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem;">Task D: Reliable AI-Agent Backend Trace Inspector</p>
+    </div>
+    <div id="run-badge-container">
+      <span class="badge badge-info" id="status-badge">Awaiting Trace File</span>
+    </div>
+  </header>
+
+  <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+    <p style="font-weight: 600; color: #fff; margin-bottom: 4px;">Drop any trace.jsonl file here or click to browse</p>
+    <p style="font-size: 0.8rem; color: var(--text-muted);">Fully client-side, zero external CDN dependencies, zero telemetry</p>
+    <input type="file" id="file-input" accept=".jsonl,.json,.txt" onchange="handleFileSelect(event)">
+  </div>
+
+  <div class="grid">
+    <!-- Left Column: Metrics and Breakdown -->
+    <div class="panel">
+      <div class="panel-title">Run Overview</div>
+      <div class="metric-row"><span>Run ID:</span><span class="metric-val" id="m-run-id">—</span></div>
+      <div class="metric-row"><span>Status:</span><span class="metric-val" id="m-status">—</span></div>
+      <div class="metric-row"><span>Start Time:</span><span class="metric-val" id="m-start">—</span></div>
+      <div class="metric-row"><span>End Time:</span><span class="metric-val" id="m-end">—</span></div>
+      <div class="metric-row"><span>Total Events:</span><span class="metric-val" id="m-events">0</span></div>
+      <div class="metric-row"><span>Tool Invocations:</span><span class="metric-val" id="m-tools">0</span></div>
+      <div class="metric-row"><span>Checker Reviews:</span><span class="metric-val" id="m-checker">0</span></div>
+      <div class="metric-row"><span>Failures / Retries:</span><span class="metric-val" id="m-failures">0</span></div>
+
+      <div class="panel-title" style="margin-top: 24px;">Active Specialists</div>
+      <div id="agent-list" style="font-size: 0.85rem; color: var(--text-muted);">
+        Load a trace file to see agent timeline lanes.
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Event Timeline -->
+    <div>
+      <div class="filter-bar">
+        <select id="agent-filter" onchange="renderEvents()">
+          <option value="ALL">All Agents</option>
+        </select>
+        <select id="type-filter" onchange="renderEvents()">
+          <option value="ALL">All Event Types</option>
+          <option value="task_started">task_started</option>
+          <option value="tool_call">tool_call</option>
+          <option value="checker_approved">checker_approved</option>
+          <option value="checker_rejected">checker_rejected</option>
+          <option value="task_failed">task_failed</option>
+          <option value="task_timed_out">task_timed_out</option>
+          <option value="budget_exhausted">budget_exhausted</option>
+        </select>
+        <input type="text" id="search-filter" placeholder="Search event payload..." oninput="renderEvents()">
+      </div>
+
+      <div class="timeline" id="timeline">
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+          No trace loaded. Select or drag-and-drop a <code>trace.jsonl</code> file from <code>runs/</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allEvents = [];
+
+    function handleFileSelect(evt) {
+      const file = evt.target.files[0];
+      if (file) {
+        readFile(file);
+      }
+    }
+
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+    dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = 'var(--border)';
+      if (e.dataTransfer.files.length > 0) {
+        readFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function readFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        parseTrace(e.target.result);
+      };
+      reader.readAsText(file);
+    }
+
+    function parseTrace(content) {
+      const lines = content.split('\n');
+      allEvents = [];
+      const agents = new Set();
+      let toolsCount = 0;
+      let checkerCount = 0;
+      let failuresCount = 0;
+      let runId = "—";
+      let status = "COMPLETED";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const ev = JSON.parse(line);
+          allEvents.push(ev);
+          if (ev.run_id) runId = ev.run_id;
+          if (ev.agent_id) agents.add(ev.agent_id);
+          if (ev.event_type === 'tool_call') toolsCount++;
+          if (ev.event_type && ev.event_type.includes('checker')) checkerCount++;
+          if (['task_failed', 'task_timed_out', 'budget_exhausted'].includes(ev.event_type)) failuresCount++;
+          if (ev.event_type === 'run_completed' && ev.details && ev.details.status) {
+            status = ev.details.status;
+          }
+        } catch (err) {
+          console.error("Skipping malformed trace line", err);
+        }
+      }
+
+      // Update overview panel
+      document.getElementById('m-run-id').textContent = runId;
+      document.getElementById('m-status').textContent = status;
+      document.getElementById('m-start').textContent = allEvents.length ? allEvents[0].timestamp.substring(11, 19) : "—";
+      document.getElementById('m-end').textContent = allEvents.length ? allEvents[allEvents.length - 1].timestamp.substring(11, 19) : "—";
+      document.getElementById('m-events').textContent = allEvents.length;
+      document.getElementById('m-tools').textContent = toolsCount;
+      document.getElementById('m-checker').textContent = checkerCount;
+      document.getElementById('m-failures').textContent = failuresCount;
+
+      const badge = document.getElementById('status-badge');
+      badge.textContent = status;
+      badge.className = status.includes('SUCCEED') ? 'badge badge-success' : (status.includes('PARTIAL') ? 'badge badge-warning' : 'badge badge-danger');
+
+      // Populate agents filter
+      const agentFilter = document.getElementById('agent-filter');
+      agentFilter.innerHTML = '<option value="ALL">All Agents</option>';
+      const agentListDiv = document.getElementById('agent-list');
+      agentListDiv.innerHTML = '';
+      agents.forEach(ag => {
+        agentFilter.innerHTML += `<option value="${escapeHtml(ag)}">${escapeHtml(ag)}</option>`;
+        agentListDiv.innerHTML += `<div style="padding: 4px 0;"><span style="color:#fff;">•</span> ${escapeHtml(ag)}</div>`;
+      });
+
+      renderEvents();
+    }
+
+    function renderEvents() {
+      const agentVal = document.getElementById('agent-filter').value;
+      const typeVal = document.getElementById('type-filter').value;
+      const searchVal = document.getElementById('search-filter').value.toLowerCase();
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+
+      const filtered = allEvents.filter(ev => {
+        if (agentVal !== 'ALL' && ev.agent_id !== agentVal) return false;
+        if (typeVal !== 'ALL' && ev.event_type !== typeVal) return false;
+        if (searchVal) {
+          const raw = JSON.stringify(ev).toLowerCase();
+          if (!raw.includes(searchVal)) return false;
+        }
+        return true;
+      });
+
+      if (!filtered.length) {
+        timeline.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">No events matching filter criteria.</div>';
+        return;
+      }
+
+      filtered.forEach(ev => {
+        const card = document.createElement('div');
+        card.className = `event-card event-${ev.event_type}`;
+
+        const header = document.createElement('div');
+        header.className = 'event-header';
+        header.innerHTML = `
+          <div><span class="event-type">${escapeHtml(ev.event_type)}</span> ${ev.agent_id ? '• <span style="color:var(--accent);">' + escapeHtml(ev.agent_id) + '</span>' : ''}</div>
+          <div>${ev.timestamp ? escapeHtml(ev.timestamp.substring(11, 19)) : ''}</div>
+        `;
+
+        const details = document.createElement('div');
+        details.className = 'event-details';
+        details.textContent = JSON.stringify(ev.details || {}, null, 2);
+
+        card.appendChild(header);
+        card.appendChild(details);
+        timeline.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

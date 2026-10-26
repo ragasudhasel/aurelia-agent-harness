@@ -1,0 +1,9 @@
+{
+  "benchmark_id": "incident_logs",
+  "task_type": "incident_investigation",
+  "expected_root_cause": {
+    "component": "db_pool",
+    "trigger_keywords": ["connection pool", "exhaustion", "leak", "maximum limit"],
+    "severity": "critical"
+  }
+}

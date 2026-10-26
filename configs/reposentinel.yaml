@@ -1,0 +1,97 @@
+task_name: "RepoSentinel"
+task_type: "code_review"
+description: "Repository code review identifying logic defects, security vulnerabilities, and test gaps."
+workspace_root: "./benchmarks/fixtures/repo_a"
+
+lead_agent_instructions: >
+  You are the Lead Code Review Architect. Break down the code review into three specialized
+  subtasks: functional bug analysis, application security assessment, and test coverage evaluation.
+  Synthesize all verified findings into an executive engineering report.
+
+global_budget:
+  max_steps: 30
+  max_wall_time_sec: 90.0
+  max_tokens: 40000
+  max_model_calls: 15
+  max_rejection_cycles: 2
+
+retry_config:
+  max_attempts: 3
+  initial_backoff_sec: 0.1
+  backoff_multiplier: 2.0
+  jitter: true
+  retryable_error_types:
+    - "RateLimitError"
+    - "TemporaryNetworkError"
+    - "TimeoutError"
+
+checker_config:
+  max_rejection_cycles: 2
+  deterministic_enabled: true
+  semantic_enabled: true
+  fail_closed: true
+
+chaos_config:
+  enabled: false
+  target_agent: null
+  failure_type: null
+
+model_provider: "mock"
+model_name: "mock-reposentinel-v1"
+trace_dir: "./runs"
+require_human_approval_for_risky_tools: true
+
+agents:
+  bug_agent:
+    name: "bug_agent"
+    role: "Functional Bug Specialist"
+    description: "Identifies logic bugs, off-by-one errors, state inconsistency, and unhandled boundary conditions."
+    instructions: >
+      Inspect the source files. Identify functional bugs, calculation errors, and off-by-one boundary defects.
+      Provide exact line numbers and verbatim code snippets.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+      - "get_line_numbered_snippet"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2
+
+  security_agent:
+    name: "security_agent"
+    role: "Application Security Specialist"
+    description: "Identifies injection vulnerabilities, authentication flaws, unsafe deserialization, and path traversal."
+    instructions: >
+      Analyze source files for security weaknesses, SQL injection, timing attacks, and unsafe inputs.
+      Verify exact file paths and line ranges.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+      - "get_line_numbered_snippet"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2
+
+  test_agent:
+    name: "test_agent"
+    role: "Test & Validation Specialist"
+    description: "Evaluates unit test coverage, reproduction test cases, and identifies missing boundary assertions."
+    instructions: >
+      Examine unit tests and test suites. Identify untested edge cases, missing assertions, and failure scenarios.
+    permitted_tools:
+      - "list_repository_files"
+      - "read_repository_file"
+      - "get_line_numbered_snippet"
+      - "run_permitted_test_command"
+    budget:
+      max_steps: 10
+      max_wall_time_sec: 30.0
+      max_tokens: 12000
+      max_model_calls: 4
+      max_rejection_cycles: 2

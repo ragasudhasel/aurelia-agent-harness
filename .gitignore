@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# Run traces & temporary data
+runs/*/trace.jsonl
+runs/**/*.log
+!runs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
